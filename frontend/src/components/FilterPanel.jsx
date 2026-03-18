@@ -1,0 +1,5 @@
+// TODO: FilterPanel — budget and area filter form (UC2)
+// TODO: Inputs: maxBudget (number), minArea (number), childStartYear (number)
+// TODO: Client-side numeric validation (ErrorInvalidInput)
+// TODO: Props: onApplyFilter(criteria), onClearFilters()
+// TODO: Display "no blocks match criteria" when results empty (NoFilterResultsScreen)

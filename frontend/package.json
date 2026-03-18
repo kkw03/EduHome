@@ -1,0 +1,21 @@
+{
+  "name": "eduhome-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "react": "TODO: ^18.x",
+    "react-dom": "TODO: ^18.x",
+    "react-router-dom": "TODO: ^6.x — client-side routing between pages",
+    "react-scripts": "TODO: ^5.x — Create React App toolchain",
+    "leaflet": "TODO: ^1.9.x — map rendering",
+    "react-leaflet": "TODO: ^4.x — React bindings for Leaflet",
+    "chart.js": "TODO: ^4.x — trend chart rendering (UC6)",
+    "react-chartjs-2": "TODO: ^5.x — React bindings for Chart.js",
+    "axios": "TODO: ^1.x — HTTP client for backend API calls"
+  },
+  "scripts": {
+    "start": "TODO: react-scripts start",
+    "build": "TODO: react-scripts build",
+    "test": "TODO: react-scripts test"
+  }
+}

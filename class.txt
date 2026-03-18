@@ -1,0 +1,256 @@
+@startuml
+' --- Formatting & Layout ---
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+' Colors for EBC stereotypes to make it visually pop for the TA
+skinparam class {
+    BackgroundColor<<Boundary>> #E8F5E9
+    BackgroundColor<<Control>> #FFF3E0
+    BackgroundColor<<Entity>> #E3F2FD
+    BorderColor DarkSlateGray
+}
+
+' ==========================================
+' BOUNDARY CLASSES (User Interfaces & External APIs)
+' ==========================================
+package "Boundary (View/Interfaces)" {
+    
+    class SearchMapUI <<Boundary>> {
+        + enterSchoolName(name: String): void
+        + toggleHeatmap(): void
+        + toggleHiddenGems(): void
+        + displayMapPins(blocks: List<HDBBlock>): void
+        + showErrorMessage(msg: String): void
+    }
+
+    class FilterPanelUI <<Boundary>> {
+        + inputMaxBudget(budget: Float): void
+        + inputMinArea(area: Int): void
+        + inputChildStartYear(year: Int): void
+        + applyFilters(): void
+    }
+
+    class WatchlistUI <<Boundary>> {
+        + inputWatchlistDetails(schoolID: Int, maxBudget: Float): void
+        + displayUserWatchlist(watchlist: Watchlist): void
+        + displayAlert(msg: String): void
+    }
+
+    class LoginUI <<Boundary>> {
+        + inputCredentials(email: String, pw: String): void
+        + displayAuthStatus(success: Boolean): void
+    }
+
+    class ExternalOneMapAPI <<Boundary>> {
+        + requestCoordinates(postalCode: Int): Shape
+        + requestCommuteTime(startLat: Float, startLng: Float, endLat: Float, endLng: Float, mode: String): Int
+    }
+
+    class ExternalGovDataAPI <<Boundary>> {
+        + fetchLatestResaleData(dateRange: Date): JSON
+        + fetchSchoolVacancies(year: Int): JSON
+    }
+}
+
+' ==========================================
+' CONTROL CLASSES (Business Logic)
+' ==========================================
+package "Control (Logic Managers)" {
+
+    class EduHomeSystem <<Control>> {
+        + main(): void
+        + initializeSystem(): void
+        + loadPersistentData(): void
+        + startDataSync(): void
+    }
+
+    class SearchController <<Control>> {
+        + validateSchoolName(name: String): Boolean
+        + searchSchoolPriorityZone(schoolName: String): List<HDBBlock>
+        + filterByBudgetAndArea(blocks: List<HDBBlock>, maxPrice: Float, minArea: Int): List<HDBBlock>
+        + applyLeaseDecayGuard(blocks: List<HDBBlock>, startYear: Int): List<HDBBlock>
+    }
+
+    class AnalyticsController <<Control>> {
+        + calculateValuationGap(zone: PriorityZone): List<HDBBlock>
+        + calculateZoneAveragePSF(zone: PriorityZone): Float
+        + generateMarketTrend(blockID: Int): List<Float>
+        + calculateBallotingRisk(school: PrimarySchool, zone: PriorityZone): String
+        + generateAffordabilityHeatmap(zone: PriorityZone): MapOverlay
+    }
+
+    class WatchlistController <<Control>> {
+        + addWatchlistItem(user: User, school: PrimarySchool, criteria: Float): Boolean
+        + removeWatchlistItem(watchID: Int): Boolean
+        + checkTriggersAndSendAlerts(): void
+    }
+
+    class CommuteController <<Control>> {
+        + getCommuteTime(school: PrimarySchool, block: HDBBlock): Int
+    }
+
+    class DataSyncController <<Control>> {
+        + triggerDailyUpdate(): void
+        + parseAndStoreTransactions(data: JSON): void
+    }
+
+    class AccountController <<Control>> {
+        + verifyCredentials(email: String, pw: String): Boolean
+        + createSession(user: User): void
+    }
+}
+
+' ==========================================
+' ENTITY CLASSES (Data Objects)
+' ==========================================
+package "Entity (Data Model)" {
+
+    enum ZoneTier {
+        GOLD_1KM
+        SILVER_2KM
+    }
+
+    class User <<Entity>> {
+        - userID: Int
+        - email: String
+        - passwordHash: String
+        - contactNo: Int
+        + authenticate(pw: String): Boolean
+        + updateContact(email: String, no: Int): void
+    }
+
+    class PrimarySchool <<Entity>> {
+        - schoolID: Int
+        - officialName: String
+        - postalCode: Int
+        - latitude: Float
+        - longitude: Float
+        - vacancies: Int
+        + getDetails(): String
+        + updateVacancies(count: Int): void
+    }
+
+    class PriorityZone <<Entity>> {
+        - zoneID: Int
+        - radiusTier: ZoneTier
+        - geometry: Shape
+        + containsCoordinate(lat: Float, lng: Float): Boolean
+    }
+
+    class HDBBlock <<Entity>> {
+        - blockID: Int
+        - streetName: String
+        - blockNum: String
+        - leaseStartYear: Int
+        - totalUnits: Int
+        - latitude: Float
+        - longitude: Float
+        + getRemainingLease(currentYear: Int): Int
+        + getLatestTransactions(): List<Transaction>
+    }
+
+    class Transaction <<Entity>> {
+        - transactionID: Int
+        - resalePrice: Float
+        - floorAreaSqm: Int
+        - transactionDate: Date
+        - flatType: String
+        + calculatePSF(): Float
+    }
+
+    class WatchlistItem <<Entity>> {
+        - watchID: Int
+        - minBudget: Float
+        - maxBudget: Float
+        - isActive: Boolean
+        + updateBudget(min: Float, max: Float): void
+    }
+
+    class HDBBlockSet <<Entity>> {
+        - blocks: List<HDBBlock>
+        + addBlock(block: HDBBlock): void
+        + removeBlock(blockID: Int): void
+        + findByZone(zone: PriorityZone): List<HDBBlock>
+    }
+
+    class TransactionHistory <<Entity>> {
+        - transactions: List<Transaction>
+        + addTransaction(t: Transaction): void
+        + getRecentTransactions(): List<Transaction>
+    }
+
+    class Watchlist <<Entity>> {
+        - items: List<WatchlistItem>
+        + addItem(item: WatchlistItem): void
+        + removeItem(watchID: Int): void
+        + getItems(): List<WatchlistItem>
+    }
+
+    class PersistentStore <<Entity>> {
+        + saveTransaction(t: Transaction): void
+        + loadTransactions(): List<Transaction>
+        + saveWatchlist(w: Watchlist): void
+        + loadWatchlist(userID: Int): Watchlist
+        + saveUser(user: User): void
+    }
+}
+
+' ==========================================
+' RELATIONSHIPS (Associations, Aggregations, Compositions, Dependencies)
+' ==========================================
+
+' --- Boundary to Control (Boundary <<call>>s Control) ---
+SearchMapUI ..> SearchController : <<call>>
+SearchMapUI ..> AnalyticsController : <<call>>
+FilterPanelUI ..> SearchController : <<call>>
+WatchlistUI ..> WatchlistController : <<call>>
+LoginUI ..> AccountController : <<call>>
+
+' --- Startup class initializes controllers ---
+EduHomeSystem ..> SearchController : <<init>>
+EduHomeSystem ..> AnalyticsController : <<init>>
+EduHomeSystem ..> WatchlistController : <<init>>
+EduHomeSystem ..> CommuteController : <<init>>
+EduHomeSystem ..> DataSyncController : <<init>>
+EduHomeSystem ..> AccountController : <<init>>
+EduHomeSystem ..> PersistentStore : <<load/save>>
+
+' --- Control to External Boundary (System <<call>>s External API) ---
+SearchController ..> ExternalOneMapAPI : <<call>>
+CommuteController ..> ExternalOneMapAPI : <<call>>
+DataSyncController ..> ExternalGovDataAPI : <<call>>
+
+' --- Internal Logic to Data (Control <<read>>s or <<write>>s Entity) ---
+SearchController ..> PrimarySchool : <<read>>
+SearchController ..> HDBBlock : <<read>>
+AnalyticsController ..> Transaction : <<read>>
+AnalyticsController ..> HDBBlock : <<read>>
+WatchlistController ..> WatchlistItem : <<write>>
+CommuteController ..> PrimarySchool : <<read>>
+CommuteController ..> HDBBlock : <<read>>
+DataSyncController ..> Transaction : <<write>>
+AccountController ..> User : <<read>>
+
+' --- Controllers using persistent storage / containers ---
+SearchController ..> HDBBlockSet : <<uses>>
+AnalyticsController ..> TransactionHistory : <<uses>>
+WatchlistController ..> Watchlist : <<uses>>
+WatchlistController ..> PersistentStore : <<save/load>>
+DataSyncController ..> PersistentStore : <<save/load>>
+AccountController ..> PersistentStore : <<save/load>>
+
+' --- Data Structure (Entity Multiplicity) ---
+User "1" *-- "1" Watchlist : owns >
+Watchlist "1" *-- "0..*" WatchlistItem : contains >
+PrimarySchool "1" *-- "2" PriorityZone : defines >
+PriorityZone "0..*" o-- "0..*" HDBBlock : contains >
+HDBBlockSet "1" o-- "0..*" HDBBlock : manages >
+HDBBlock "1" *-- "0..*" Transaction : historical records >
+TransactionHistory "1" o-- "0..*" Transaction : contains >
+WatchlistItem "0..*" -- "1" PrimarySchool : targets >
+
+@enduml
+

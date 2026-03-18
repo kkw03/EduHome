@@ -1,0 +1,12 @@
+# TODO: Flask
+# TODO: Flask-SQLAlchemy
+# TODO: Flask-Login
+# TODO: Flask-Mail
+# TODO: flask-cors
+# TODO: GeoAlchemy2          — PostGIS geometry column support for SQLAlchemy
+# TODO: psycopg2-binary      — PostgreSQL adapter
+# TODO: requests              — HTTP client for OneMap / GovData APIs
+# TODO: APScheduler           — background data sync scheduler (UC5)
+# TODO: Werkzeug              — password hashing utilities
+# TODO: pytest                — test runner
+# TODO: pytest-flask          — Flask test fixtures

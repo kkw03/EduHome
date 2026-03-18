@@ -1,0 +1,6 @@
+-- TODO: Insert sample primary schools (e.g., Nanyang Primary, Raffles Girls', Henry Park)
+-- TODO: Insert sample priority zones with PostGIS geometries
+-- TODO: Insert sample HDB blocks within 1km and 2km of sample schools
+-- TODO: Insert sample resale transactions spanning 12+ months for trend testing
+-- TODO: Insert sample user account for demo login
+-- TODO: Insert sample watchlist entries for demo

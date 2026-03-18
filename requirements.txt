@@ -1,0 +1,103 @@
+# ============================================================================
+# EduHome: P1 Registration Strategist — Requirements Specification
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# 1. Overview
+# ----------------------------------------------------------------------------
+#
+# A strategic property intelligence platform designed for Singaporean parents
+# planning for Primary 1 Registration. It identifies "undervalued" housing
+# options by correlating real-time HDB resale prices with MOE School Priority
+# Zones (1 km / 2 km). Unlike standard property portals, it treats school
+# proximity as the primary asset class.
+
+
+# ----------------------------------------------------------------------------
+# 2. Target Users
+# ----------------------------------------------------------------------------
+#
+# - Kiasu Young Parents:
+#     Planning moves for Phase 2C registration (1–2 years in advance).
+#
+# - Property Investors:
+#     Seeking high-rental-yield units near top primary schools.
+#
+# - Strategists:
+#     Optimizing the trade-off between "School Distance" and "Square Footage."
+
+
+# ----------------------------------------------------------------------------
+# 3. Data Sources (APIs)
+# ----------------------------------------------------------------------------
+#
+#   Source  | Dataset              | Usage
+#   -----  | -------------------- | ---------------------------------------------
+#   MOE    | School information   | Official list of schools and vacancy data
+#   HDB    | Resale prices        | Historical resale transaction records
+#   SLA    | Search & Routing API | Geocoding and validating distances for balloting
+#   URA    | Master Plan          | Overlaying future development to assess long-term value
+
+
+# ============================================================================
+# 4. Functional Requirements
+# ============================================================================
+
+# FR1 — Priority Zone Search
+#   User selects a target school; system retrieves and visualizes all HDB
+#   blocks strictly within the 1 km (Gold) and 2 km (Silver) balloting radii.
+
+# FR2 — Valuation Gap Analysis
+#   System identifies "Hidden Gems" — blocks within the 1 km zone that have a
+#   significantly lower Price-Per-Square-Foot (PSF) compared to the zone's
+#   average.
+
+# FR3 — Market Trend & Momentum
+#   Display a 12-month Moving Average trend line for specific blocks to
+#   indicate if prices are "Heating Up" (Rising) or "Cooling Off" (Stable).
+
+# FR4 — Affordability Heatmap
+#   Overlay a colour-coded price layer on the map to instantly spot affordable
+#   pockets in expensive school districts (e.g., Bukit Timah).
+
+# FR5 — Balloting Risk Simulator
+#   Estimate "Overcrowding Risk" for a zone based on the density of
+#   residential units vs. known school vacancies.
+
+# FR6 — Lease Decay Guard
+#   Automatically flag flats where the remaining lease is insufficient to
+#   cover the child's 6-year primary education period.
+
+# FR7 — Strategic Watchlist
+#   Users can subscribe to a specific "School Zone" to receive email alerts
+#   when a new unit is transacted in that area.
+
+# FR8 — Commute Optimizer
+#   For users outside the 1 km zone, calculate the "Best Alternative" block
+#   with the shortest direct bus travel time to the school gate.
+
+
+# ============================================================================
+# 5. Non-Functional Requirements
+# ============================================================================
+
+# NFR1 — Geospatial Performance
+#   Spatial queries (filtering 10,000 blocks against a radius) must execute
+#   in < 2 seconds using PostGIS indexing.
+
+# NFR2 — Regulatory Accuracy
+#   Distance calculations must strictly adhere to SLA OneMap's "Radial" logic
+#   to ensure balloting validity.
+
+# NFR3 — System Reliability
+#   The application must function fully in "Demo Mode" using cached database
+#   values, even if external APIs (OneMap) are offline.
+
+# NFR4 — Data Scalability
+#   The database must efficiently handle and index 5+ years of historical
+#   transaction data (~150,000 rows).
+
+# NFR5 — Mobile Responsiveness
+#   The map interface and dashboards must be fully navigable on mobile devices
+#   for on-the-go viewing.

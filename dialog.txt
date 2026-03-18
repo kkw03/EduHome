@@ -1,0 +1,728 @@
+@startuml EduHome_P1_Registration_Strategist
+title EduHome: P1 Registration Strategist — Combined System Dialog Map
+
+
+skinparam state {
+ BackgroundColor White
+ BorderColor #444444
+ ArrowColor #CC0000
+ FontName Arial
+ FontSize 11
+}
+
+
+skinparam {
+ Padding 8
+ RoundCorner 8
+ ShadowColor #CCCCCC
+ ShadowDistance 3
+}
+
+
+' ══════════════════════════════════════════════════════════════
+' GLOBAL ENTRY POINT
+' ══════════════════════════════════════════════════════════════
+
+
+[*] --> HomeScreen
+
+
+HomeScreen : entry / Show search bar and navigation menu
+HomeScreen : do / Await school name input or user action
+HomeScreen : exit / Clear previous search state
+
+
+' ══════════════════════════════════════════════════════════════
+' UC5: Update Market Data (System Background Process)
+' ══════════════════════════════════════════════════════════════
+
+
+state "UC5 · Update Market Data (System Timer)" as SYS {
+
+
+ [*] --> IdleState
+
+
+ IdleState : entry / Initialise timer monitoring
+ IdleState : do / Await scheduled trigger from system timer
+ IdleState : exit / Begin data retrieval process
+
+
+ IdleState -right-> RetrievingMarketData : scheduledTimerTriggered
+
+
+ RetrievingMarketData : entry / Connect to HDB and URA data sources
+ RetrievingMarketData : do / Download latest resale transaction data
+ RetrievingMarketData : exit / Pass raw data to validation
+
+
+ RetrievingMarketData -right-> ValidatingMarketData : [data downloaded]
+ RetrievingMarketData --> ErrorMarketData : [download failed]
+
+
+ ValidatingMarketData : entry / Check data format and structural integrity
+ ValidatingMarketData : do / Verify no corruption or unexpected schema
+ ValidatingMarketData : exit / Pass validated data to database update
+
+
+ ValidatingMarketData -right-> UpdatingDatabase : [data valid]
+ ValidatingMarketData --> ErrorMarketData : [data invalid]
+
+
+ ErrorMarketData : entry / Log format or validation error details
+ ErrorMarketData : do / Abort current update run
+ ErrorMarketData : exit / Return to idle and await next schedule
+
+
+ ErrorMarketData --> IdleState : awaitNextSchedule
+
+
+ UpdatingDatabase : entry / Write new transactions to internal database
+ UpdatingDatabase : do / Refresh derived analytics and PSF values
+ UpdatingDatabase : exit / Signal watchlist check to proceed
+
+
+ UpdatingDatabase -right-> CheckingWatchlists : [new data persisted]
+ UpdatingDatabase --> NoNewDataState : [no new data]
+
+
+ NoNewDataState : entry / Log that database is already up to date
+ NoNewDataState : do / Skip alert triggering process
+ NoNewDataState : exit / Return system to idle state
+
+
+ NoNewDataState --> IdleState : awaitNextSchedule
+
+
+ CheckingWatchlists : entry / Query all active watchlists
+ CheckingWatchlists : do / Match new transactions against subscribed zones
+ CheckingWatchlists : exit / Pass matched zones to alert dispatcher
+
+
+ CheckingWatchlists -right-> SendingAlerts : [zones matched]
+ CheckingWatchlists --> NoWatchlistMatchState : [no matches]
+
+
+ NoWatchlistMatchState : entry / Log that no watchlist zones were affected
+ NoWatchlistMatchState : do / Complete update run without sending alerts
+ NoWatchlistMatchState : exit / Return system to idle state
+
+
+ NoWatchlistMatchState --> IdleState : awaitNextSchedule
+
+
+ SendingAlerts : entry / Compose alert messages for affected users
+ SendingAlerts : do / Dispatch email notifications via configured channels
+ SendingAlerts : exit / Log alert delivery and return to idle
+
+
+ SendingAlerts --> IdleState : complete
+}
+
+
+' ══════════════════════════════════════════════════════════════
+' UC1: Search School Priority Zone (FR1)
+' ══════════════════════════════════════════════════════════════
+
+
+state "UC1 · Search School Priority Zone" as UC1 {
+
+
+ [*] --> ValidatingSchool
+
+
+ ValidatingSchool : entry / Check school name against dataset
+ ValidatingSchool : do / Match input to known school records
+ ValidatingSchool : exit / Pass validated name downstream
+
+
+ ValidatingSchool -right-> RetrievingCoordinates : [name matches dataset]
+ ValidatingSchool --> ErrorInvalidSchool : [name not found]
+
+
+ ErrorInvalidSchool : entry / Show invalid school name error message
+ ErrorInvalidSchool : do / Prompt user to re-enter school name
+ ErrorInvalidSchool : exit / Clear error message
+
+
+ ErrorInvalidSchool --> [*] : retrySearch
+
+
+ RetrievingCoordinates : entry / Query SLA OneMap with school name
+ RetrievingCoordinates : do / Await coordinate response
+ RetrievingCoordinates : exit / Store retrieved coordinates
+
+
+ RetrievingCoordinates -right-> CalculatingZones : [coordinates retrieved]
+ RetrievingCoordinates --> ErrorServiceDown : [service unavailable]
+
+
+ ErrorServiceDown : entry / Show coordinate service error message
+ ErrorServiceDown : do / Display retry option to user
+ ErrorServiceDown : exit / Clear error state
+
+
+ ErrorServiceDown --> RetrievingCoordinates : retry
+ ErrorServiceDown --> [*] : retryFailed
+
+
+ CalculatingZones : entry / Compute 1km Gold and 2km Silver radii
+ CalculatingZones : do / Identify eligible HDB blocks in each zone
+ CalculatingZones : exit / Package zone results for display
+
+
+ CalculatingZones -right-> SearchResultsScreen : [blocks found]
+ CalculatingZones --> ErrorNoBlocks : [no blocks found]
+
+
+ ErrorNoBlocks : entry / Show no eligible blocks found message
+ ErrorNoBlocks : do / Display school location and zone boundaries
+ ErrorNoBlocks : exit / Clear notification
+
+
+ ErrorNoBlocks --> [*] : newSearch
+}
+
+
+HomeScreen --> UC1 : enterSchoolName
+UC1 --> HomeScreen : newSearch / error exit
+
+
+SearchResultsScreen : entry / Render map with Gold and Silver zone pins
+SearchResultsScreen : do / Await filter, feature toggle, or new search
+SearchResultsScreen : exit / Clear map state on new search
+
+
+' ══════════════════════════════════════════════════════════════
+' UC2: Filter by Budget
+' ══════════════════════════════════════════════════════════════
+
+
+state "UC2 · Filter by Budget" as UC2 {
+
+
+ [*] --> FilterInputScreen
+
+
+ FilterInputScreen : entry / Show max price and min floor area input fields
+ FilterInputScreen : do / Await user input values
+ FilterInputScreen : exit / Pass input values to validation
+
+
+ FilterInputScreen -right-> ApplyingFilters : applyFilter [valid]
+ FilterInputScreen --> ErrorInvalidInput : applyFilter [invalid]
+
+
+ ErrorInvalidInput : entry / Show numeric validation error message
+ ErrorInvalidInput : do / Await corrected input from user
+ ErrorInvalidInput : exit / Clear validation error
+
+
+ ErrorInvalidInput --> FilterInputScreen : correctInput
+
+
+ ApplyingFilters : entry / Apply budget and floor area constraints to results
+ ApplyingFilters : do / Remove blocks that do not meet filter criteria
+ ApplyingFilters : exit / Pass filtered results to display
+
+
+ ApplyingFilters -right-> FilteredResultsScreen : [blocks found]
+ ApplyingFilters --> NoFilterResultsScreen : [no match]
+
+
+ FilteredResultsScreen : entry / Update map view with filtered blocks
+ FilteredResultsScreen : do / Refresh and display result count
+ FilteredResultsScreen : exit / Clear filter state on reset
+
+
+ FilteredResultsScreen --> FilterInputScreen : adjustFilter
+ FilteredResultsScreen --> [*] : clearFilters
+ FilteredResultsScreen --> [*] : exitApp
+
+
+ NoFilterResultsScreen : entry / Show no blocks match your criteria message
+ NoFilterResultsScreen : do / Keep map visible and allow filter adjustment
+ NoFilterResultsScreen : exit / Clear no-results message
+
+
+ NoFilterResultsScreen --> FilterInputScreen : adjustFilter
+ NoFilterResultsScreen --> [*] : clearFilters
+}
+
+
+SearchResultsScreen --> UC2 : openFilter
+UC2 --> SearchResultsScreen : clearFilters / back
+
+
+' ══════════════════════════════════════════════════════════════
+' UC3: Hidden Gems / Valuation Gap (FR2)
+' ══════════════════════════════════════════════════════════════
+
+
+state "UC3 · Hidden Gems (Valuation Gap)" as UC3 {
+
+
+ [*] --> RetrievingTransactions
+
+
+ RetrievingTransactions : entry / Query HDB resale transaction database
+ RetrievingTransactions : do / Await transaction data response
+ RetrievingTransactions : exit / Pass transaction data to PSF calculation
+
+
+ RetrievingTransactions -right-> CalculatingPSF : [data retrieved]
+ RetrievingTransactions --> ErrorInsufficientData : [insufficient data]
+
+
+ ErrorInsufficientData : entry / Show insufficient transaction data notice
+ ErrorInsufficientData : do / Prevent any block highlighting
+ ErrorInsufficientData : exit / Clear error notice on dismiss
+
+
+ ErrorInsufficientData --> [*] : dismiss
+
+
+ CalculatingPSF : entry / Compute price per square foot for each block
+ CalculatingPSF : do / Calculate zone average PSF for comparison
+ CalculatingPSF : exit / Pass PSF values to identification step
+
+
+ CalculatingPSF -right-> HiddenGemsDisplayed : [gems found]
+ CalculatingPSF --> NoHiddenGemsScreen : [none below threshold]
+
+
+ HiddenGemsDisplayed : entry / Highlight undervalued blocks on map
+ HiddenGemsDisplayed : do / Show Hidden Gem visual indicators
+ HiddenGemsDisplayed : exit / Remove highlights on toggle-off
+
+
+ HiddenGemsDisplayed --> [*] : toggleOff
+
+
+ NoHiddenGemsScreen : entry / Show no hidden gems found in this zone message
+ NoHiddenGemsScreen : do / Keep map unchanged and allow exploration
+ NoHiddenGemsScreen : exit / Clear notification message
+
+
+ NoHiddenGemsScreen --> [*] : toggleOff
+}
+
+
+SearchResultsScreen --> UC3 : toggleShowUndervalued
+UC3 --> SearchResultsScreen : toggleOff / dismiss
+
+
+' ══════════════════════════════════════════════════════════════
+' UC4: Manage Watchlist (FR7)
+' ══════════════════════════════════════════════════════════════
+
+
+state "UC4 · Manage Watchlist" as UC4 {
+
+
+ [*] --> LoginGate
+ state LoginGate <<choice>>
+ LoginGate --> LoginScreen : [not authenticated]
+ LoginGate --> WatchlistScreen : [authenticated]
+
+
+ LoginScreen : entry / Display email and password input fields
+ LoginScreen : do / Await credential input from user
+ LoginScreen : exit / Clear password field for security
+
+
+ LoginScreen -right-> AuthenticatingUser : submitCredentials
+
+
+ AuthenticatingUser : entry / Submit credentials to authentication service
+ AuthenticatingUser : do / Await authentication response
+ AuthenticatingUser : exit / Store session token on success
+
+
+ AuthenticatingUser -right-> WatchlistScreen : [valid]
+ AuthenticatingUser --> ErrorAuthFailed : [invalid]
+
+
+ ErrorAuthFailed : entry / Show invalid credentials error message
+ ErrorAuthFailed : do / Allow user to retry login
+ ErrorAuthFailed : exit / Clear error message
+
+
+ ErrorAuthFailed --> LoginScreen : retry
+
+
+ WatchlistScreen : entry / Load and display existing watchlist entries
+ WatchlistScreen : do / Await add, remove, save, or cancel action
+ WatchlistScreen : exit / Discard unsaved changes on cancel
+
+
+ WatchlistScreen -right-> SavingWatchlist : saveWatchlist
+ WatchlistScreen --> [*] : cancelWithoutSaving
+
+
+ SavingWatchlist : entry / Validate contact details before saving
+ SavingWatchlist : do / Persist updated watchlist and alert preferences
+ SavingWatchlist : exit / Confirm save result to next state
+
+
+ SavingWatchlist -right-> WatchlistUpdatedScreen : [contact valid]
+ SavingWatchlist --> ErrorInvalidContact : [contact missing]
+
+
+ ErrorInvalidContact : entry / Prompt user to update missing contact details
+ ErrorInvalidContact : do / Disable alerts until contact details are resolved
+ ErrorInvalidContact : exit / Re-enable alert setup on valid contact
+
+
+ ErrorInvalidContact --> WatchlistScreen : updateContactDetails
+
+
+ WatchlistUpdatedScreen : entry / Show watchlist saved confirmation message
+ WatchlistUpdatedScreen : do / Display updated watchlist summary
+ WatchlistUpdatedScreen : exit / Clear confirmation on navigation
+
+
+ WatchlistUpdatedScreen --> [*] : done
+ WatchlistUpdatedScreen --> [*] : exitApp
+}
+
+
+HomeScreen --> UC4 : manageWatchlist
+SearchResultsScreen --> UC4 : addToWatchlist
+UC4 --> HomeScreen : done / cancel
+
+
+' ══════════════════════════════════════════════════════════════
+' UC6: Market Trend & Momentum (FR3)
+' ══════════════════════════════════════════════════════════════
+
+
+state "UC6 · Market Trend & Momentum" as UC6 {
+
+
+ [*] --> SelectBlockForTrend
+
+
+ SelectBlockForTrend : entry / Highlight selected block on map
+ SelectBlockForTrend : do / Await block selection confirmation
+ SelectBlockForTrend : exit / Pass selected block ID to data fetch
+
+
+ SelectBlockForTrend -right-> FetchingHistoricalPrices : [block selected]
+
+
+ FetchingHistoricalPrices : entry / Query 12-month resale history for selected block
+ FetchingHistoricalPrices : do / Await historical price data from HDB dataset
+ FetchingHistoricalPrices : exit / Pass price series to moving average computation
+
+
+ FetchingHistoricalPrices -right-> ComputingMovingAverage : [12-month data OK]
+ FetchingHistoricalPrices --> ErrorTrendDataInsufficient : [insufficient history]
+
+
+ ErrorTrendDataInsufficient : entry / Show not enough historical data message
+ ErrorTrendDataInsufficient : do / Suggest user try blocks with more transaction history
+ ErrorTrendDataInsufficient : exit / Clear error notice on dismiss
+
+
+ ErrorTrendDataInsufficient --> [*] : dismiss
+
+
+ ComputingMovingAverage : entry / Calculate 12-month moving average trend line
+ ComputingMovingAverage : do / Classify trend as Heating Up or Cooling Off
+ ComputingMovingAverage : exit / Package trend data for chart rendering
+
+
+ ComputingMovingAverage -right-> TrendChartDisplayed : [trend computed]
+
+
+ TrendChartDisplayed : entry / Render price trend chart with moving average overlay
+ TrendChartDisplayed : do / Display Heating Up or Cooling Off momentum indicator
+ TrendChartDisplayed : exit / Close chart panel and release data
+
+
+ TrendChartDisplayed --> [*] : closeTrendChart
+ TrendChartDisplayed --> SelectBlockForTrend : selectDifferentBlock
+ TrendChartDisplayed --> [*] : exitApp
+}
+
+
+SearchResultsScreen --> UC6 : selectBlock
+UC6 --> SearchResultsScreen : close / dismiss
+
+
+' ══════════════════════════════════════════════════════════════
+' UC7: Affordability Heatmap (FR4)
+' ══════════════════════════════════════════════════════════════
+
+
+state "UC7 · Affordability Heatmap" as UC7 {
+
+
+ [*] --> LoadingHeatmapData
+
+
+ LoadingHeatmapData : entry / Aggregate average PSF per block within zone
+ LoadingHeatmapData : do / Compute price buckets for colour coding
+ LoadingHeatmapData : exit / Pass aggregated price layer to renderer
+
+
+ LoadingHeatmapData -right-> RenderingHeatmap : [data aggregated]
+ LoadingHeatmapData --> ErrorHeatmapData : [aggregation failed]
+
+
+ ErrorHeatmapData : entry / Show unable to generate heatmap error message
+ ErrorHeatmapData : do / Suggest user retry after data refresh
+ ErrorHeatmapData : exit / Clear error state on dismiss
+
+
+ ErrorHeatmapData --> [*] : dismiss
+
+
+ RenderingHeatmap : entry / Generate colour-coded overlay from price buckets
+ RenderingHeatmap : do / Apply heatmap tiles onto map view
+ RenderingHeatmap : exit / Confirm heatmap layer is active
+
+
+ RenderingHeatmap -right-> HeatmapDisplayed : [rendered]
+
+
+ HeatmapDisplayed : entry / Show heatmap legend with price colour scale
+ HeatmapDisplayed : do / Await user tap on zone or toggle off
+ HeatmapDisplayed : exit / Remove heatmap layer from map
+
+
+ HeatmapDisplayed --> [*] : toggleHeatmapOff
+ HeatmapDisplayed --> HeatmapBlockDetail : tapHeatmapZone
+ HeatmapDisplayed --> [*] : exitApp
+
+
+ HeatmapBlockDetail : entry / Show block-level PSF and recent transactions
+ HeatmapBlockDetail : do / Display price comparison against zone average
+ HeatmapBlockDetail : exit / Clear detail panel on back navigation
+
+
+ HeatmapBlockDetail --> HeatmapDisplayed : back
+}
+
+
+SearchResultsScreen --> UC7 : toggleAffordabilityHeatmap
+UC7 --> SearchResultsScreen : toggleHeatmapOff / dismiss
+
+
+' ══════════════════════════════════════════════════════════════
+' UC8: Balloting Risk Simulator (FR5)
+' ══════════════════════════════════════════════════════════════
+
+
+state "UC8 · Balloting Risk Simulator" as UC8 {
+
+
+ [*] --> LoadingBallotData
+
+
+ LoadingBallotData : entry / Retrieve residential unit density and school vacancy data
+ LoadingBallotData : do / Await density and vacancy figures from MOE and HDB sources
+ LoadingBallotData : exit / Pass density and vacancy data to risk computation
+
+
+ LoadingBallotData -right-> ComputingOvercrowdingRisk : [data loaded]
+ LoadingBallotData --> ErrorBallotData : [data unavailable]
+
+
+ ErrorBallotData : entry / Show vacancy data currently unavailable message
+ ErrorBallotData : do / Suggest user check back after next MOE data refresh
+ ErrorBallotData : exit / Clear error on dismiss
+
+
+ ErrorBallotData --> [*] : dismiss
+
+
+ ComputingOvercrowdingRisk : entry / Calculate unit-to-vacancy ratio for selected zone
+ ComputingOvercrowdingRisk : do / Classify overcrowding risk as Low, Medium, or High
+ ComputingOvercrowdingRisk : exit / Package risk score and breakdown for display
+
+
+ ComputingOvercrowdingRisk -right-> BallotRiskDisplayed : [risk computed]
+
+
+ BallotRiskDisplayed : entry / Show overcrowding risk badge on zone overlay
+ BallotRiskDisplayed : do / Display risk level with colour indicator
+ BallotRiskDisplayed : exit / Remove risk overlay on close
+
+
+ BallotRiskDisplayed --> [*] : closeBallotRisk
+ BallotRiskDisplayed --> BallotRiskDetail : viewBreakdown
+ BallotRiskDisplayed --> [*] : exitApp
+
+
+ BallotRiskDetail : entry / Show detailed breakdown of units vs vacancies
+ BallotRiskDetail : do / Display historical ballot subscription rates if available
+ BallotRiskDetail : exit / Return to summary risk view
+
+
+ BallotRiskDetail --> BallotRiskDisplayed : back
+}
+
+
+SearchResultsScreen --> UC8 : openBallotingRisk
+UC8 --> SearchResultsScreen : close / dismiss
+
+
+' ══════════════════════════════════════════════════════════════
+' UC9: Lease Decay Guard (FR6)
+' ══════════════════════════════════════════════════════════════
+
+
+state "UC9 · Lease Decay Guard" as UC9 {
+
+
+ [*] --> CheckingLeaseData
+
+
+ CheckingLeaseData : entry / Retrieve remaining lease years for blocks in zone
+ CheckingLeaseData : do / Await lease commencement data from HDB dataset
+ CheckingLeaseData : exit / Pass lease data to evaluation step
+
+
+ CheckingLeaseData -right-> EvaluatingLeaseRemaining : [lease data OK]
+ CheckingLeaseData --> ErrorLeaseData : [data unavailable]
+
+
+ ErrorLeaseData : entry / Show lease data unavailable error message
+ ErrorLeaseData : do / Suggest user verify lease info via HDB portal
+ ErrorLeaseData : exit / Clear error state on dismiss
+
+
+ ErrorLeaseData --> [*] : dismiss
+
+
+ EvaluatingLeaseRemaining : entry / Compare remaining lease against 6-year education threshold
+ EvaluatingLeaseRemaining : do / Flag blocks with insufficient remaining lease
+ EvaluatingLeaseRemaining : exit / Package flagged and safe blocks for display
+
+
+ EvaluatingLeaseRemaining -right-> LeaseWarningsDisplayed : [flagged blocks found]
+ EvaluatingLeaseRemaining --> NoLeaseIssuesScreen : [all leases sufficient]
+
+
+ LeaseWarningsDisplayed : entry / Mark flagged blocks with lease decay warning icon
+ LeaseWarningsDisplayed : do / Display count of flagged blocks in zone
+ LeaseWarningsDisplayed : exit / Remove warning icons on toggle off
+
+
+ LeaseWarningsDisplayed --> [*] : toggleLeaseGuardOff
+ LeaseWarningsDisplayed --> LeaseDetailScreen : selectFlaggedBlock
+
+
+ LeaseDetailScreen : entry / Show lease commencement date and years remaining for block
+ LeaseDetailScreen : do / Display advisory that lease may not cover primary education period
+ LeaseDetailScreen : exit / Return to warnings overview
+
+
+ LeaseDetailScreen --> LeaseWarningsDisplayed : back
+
+
+ NoLeaseIssuesScreen : entry / Show all blocks have sufficient remaining lease message
+ NoLeaseIssuesScreen : do / Confirm no lease concerns for this zone
+ NoLeaseIssuesScreen : exit / Clear confirmation on toggle off
+
+
+ NoLeaseIssuesScreen --> [*] : toggleLeaseGuardOff
+}
+
+
+SearchResultsScreen --> UC9 : toggleLeaseDecayGuard
+UC9 --> SearchResultsScreen : toggleOff / dismiss
+
+
+' ══════════════════════════════════════════════════════════════
+' UC10: Commute Optimizer (FR8)
+' ══════════════════════════════════════════════════════════════
+
+
+state "UC10 · Commute Optimizer" as UC10 {
+
+
+ [*] --> CommuteInputScreen
+
+
+ CommuteInputScreen : entry / Show origin address input field and school destination
+ CommuteInputScreen : do / Await user address entry
+ CommuteInputScreen : exit / Pass origin address to route query
+
+
+ CommuteInputScreen -right-> QueryingRoutes : submitOrigin [valid]
+ CommuteInputScreen --> ErrorInvalidAddress : submitOrigin [invalid]
+
+
+ ErrorInvalidAddress : entry / Show address not recognised error message
+ ErrorInvalidAddress : do / Prompt user to enter a valid Singapore address
+ ErrorInvalidAddress : exit / Clear error on correction
+
+
+ ErrorInvalidAddress --> CommuteInputScreen : correctAddress
+
+
+ QueryingRoutes : entry / Submit origin and school to SLA OneMap routing API
+ QueryingRoutes : do / Retrieve direct bus travel times to school gate
+ QueryingRoutes : exit / Pass route results to best alternative computation
+
+
+ QueryingRoutes -right-> ComputingBestAlternative : [routes retrieved]
+ QueryingRoutes --> ErrorRoutingService : [service unavailable]
+
+
+ ErrorRoutingService : entry / Show routing service unavailable error message
+ ErrorRoutingService : do / Display retry or cancel options
+ ErrorRoutingService : exit / Clear error state
+
+
+ ErrorRoutingService --> CommuteInputScreen : retry
+ ErrorRoutingService --> [*] : cancel
+
+
+ ComputingBestAlternative : entry / Rank blocks outside 1km by shortest bus travel time
+ ComputingBestAlternative : do / Identify block with best commute trade-off
+ ComputingBestAlternative : exit / Package best alternative block and route for display
+
+
+ ComputingBestAlternative -right-> CommuteResultsScreen : [best block found]
+ ComputingBestAlternative --> NoCommuteResultScreen : [no viable routes]
+
+
+ CommuteResultsScreen : entry / Show best alternative block with travel time and route
+ CommuteResultsScreen : do / Display map with commute route overlay and block details
+ CommuteResultsScreen : exit / Clear route overlay on close
+
+
+ CommuteResultsScreen --> [*] : closeCommuteResults
+ CommuteResultsScreen --> CommuteInputScreen : tryDifferentOrigin
+ CommuteResultsScreen --> UC6 : viewBlockTrend
+ CommuteResultsScreen --> [*] : exitApp
+
+
+ NoCommuteResultScreen : entry / Show no viable bus routes found message
+ NoCommuteResultScreen : do / Suggest user try a different origin address
+ NoCommuteResultScreen : exit / Clear message on navigation
+
+
+ NoCommuteResultScreen --> CommuteInputScreen : tryDifferentOrigin
+ NoCommuteResultScreen --> [*] : cancel
+}
+
+
+SearchResultsScreen --> UC10 : openCommuteOptimizer
+UC10 --> SearchResultsScreen : close / cancel
+
+
+' ══════════════════════════════════════════════════════════════
+' Global Exits
+' ══════════════════════════════════════════════════════════════
+HomeScreen --> [*] : exitApp
+
+
+@enduml
+
+
+
