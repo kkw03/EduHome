@@ -62,3 +62,60 @@
 
 -- TODO: CREATE INDEX idx_transactions_block ON transactions (block_id);
 --       For block-level transaction lookups
+
+-- ============================================
+-- Implementation (plain PostgreSQL, no PostGIS)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS users (
+    user_id        SERIAL PRIMARY KEY,
+    email          VARCHAR(255) UNIQUE NOT NULL,
+    password_hash  VARCHAR(255) NOT NULL,
+    contact_no     VARCHAR(20)
+);
+
+CREATE TABLE IF NOT EXISTS primary_schools (
+    school_id      SERIAL PRIMARY KEY,
+    official_name  VARCHAR(255) NOT NULL,
+    postal_code    INTEGER,
+    latitude       DOUBLE PRECISION NOT NULL,
+    longitude      DOUBLE PRECISION NOT NULL,
+    vacancies      INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS hdb_blocks (
+    block_id         SERIAL PRIMARY KEY,
+    street_name      VARCHAR(255),
+    block_num        VARCHAR(10),
+    lease_start_year INTEGER,
+    total_units      INTEGER,
+    latitude         DOUBLE PRECISION NOT NULL,
+    longitude        DOUBLE PRECISION NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+    transaction_id   SERIAL PRIMARY KEY,
+    block_id         INTEGER REFERENCES hdb_blocks(block_id),
+    resale_price     NUMERIC(12, 2),
+    floor_area_sqm   INTEGER,
+    transaction_date DATE,
+    flat_type        VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS watchlists (
+    watchlist_id SERIAL PRIMARY KEY,
+    user_id      INTEGER UNIQUE REFERENCES users(user_id)
+);
+
+CREATE TABLE IF NOT EXISTS watchlist_items (
+    watch_id     SERIAL PRIMARY KEY,
+    watchlist_id INTEGER REFERENCES watchlists(watchlist_id) ON DELETE CASCADE,
+    school_id    INTEGER REFERENCES primary_schools(school_id),
+    min_budget   NUMERIC(12, 2),
+    max_budget   NUMERIC(12, 2),
+    is_active    BOOLEAN DEFAULT TRUE
+);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_date  ON transactions (transaction_date);
+CREATE INDEX IF NOT EXISTS idx_transactions_block ON transactions (block_id);
+CREATE INDEX IF NOT EXISTS idx_schools_name       ON primary_schools (official_name);
