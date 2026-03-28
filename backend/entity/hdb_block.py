@@ -1,12 +1,8 @@
-# TODO: HDBBlock model — SQLAlchemy (db.Model) with PostGIS point
-# TODO: __tablename__ = "hdb_blocks"
-# TODO: Columns: block_id (Integer, PK), street_name (String), block_num (String),
-#       lease_start_year (Integer), total_units (Integer),
-#       location (Geography(Point, 4326) via GeoAlchemy2)
-# TODO: Relationship: transactions = db.relationship("Transaction", backref="block")
-# TODO: getRemainingLease(currentYear) — return 99 - (currentYear - lease_start_year)
-# TODO: getLatestTransactions() — query Transaction ordered by date desc
-# TODO: GIST index on location column for < 2s radius queries (NFR1)
+"""HDBBlock entity — maps to hdb_blocks table with PostGIS geography column."""
+
+from geoalchemy2 import Geography
+from geoalchemy2.elements import WKTElement
+from geoalchemy2.shape import to_shape
 
 from backend.entity import db
 
@@ -19,15 +15,41 @@ class HDBBlock(db.Model):
     block_num        = db.Column(db.String(10))
     lease_start_year = db.Column(db.Integer)
     total_units      = db.Column(db.Integer)
-    latitude         = db.Column(db.Float, nullable=False)
-    longitude        = db.Column(db.Float, nullable=False)
+    location         = db.Column(
+        Geography(geometry_type="POINT", srid=4326), nullable=False
+    )
 
     transactions = db.relationship("Transaction", backref="block")
+
+    # --- Convenience lat/lng access ---
+
+    @property
+    def latitude(self):
+        if self.location is not None:
+            return to_shape(self.location).y
+        return None
+
+    @property
+    def longitude(self):
+        if self.location is not None:
+            return to_shape(self.location).x
+        return None
+
+    @staticmethod
+    def make_location(lat, lng):
+        """Create a PostGIS geography value from lat/lng."""
+        return WKTElement(f"POINT({lng} {lat})", srid=4326)
+
+    # --- Domain methods ---
 
     def get_remaining_lease(self, current_year):
         return 99 - (current_year - self.lease_start_year)
 
     def get_latest_transactions(self):
         from backend.entity.transaction import Transaction
-        return Transaction.query.filter_by(block_id=self.block_id)\
-            .order_by(Transaction.transaction_date.desc()).all()
+        return (
+            Transaction.query
+            .filter_by(block_id=self.block_id)
+            .order_by(Transaction.transaction_date.desc())
+            .all()
+        )

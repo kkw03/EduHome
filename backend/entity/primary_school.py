@@ -1,10 +1,8 @@
-# TODO: PrimarySchool model — SQLAlchemy (db.Model)
-# TODO: __tablename__ = "primary_schools"
-# TODO: Columns: school_id (Integer, PK), official_name (String), postal_code (Integer),
-#       location (Geography(Point, 4326) via GeoAlchemy2), vacancies (Integer)
-# TODO: Relationship: zones = db.relationship("PriorityZone", backref="school")
-# TODO: getDetails() — return formatted school info string
-# TODO: updateVacancies(count) — set vacancies and commit
+"""PrimarySchool entity — maps to primary_schools table with PostGIS geography column."""
+
+from geoalchemy2 import Geography
+from geoalchemy2.elements import WKTElement
+from geoalchemy2.shape import to_shape
 
 from backend.entity import db
 
@@ -15,9 +13,33 @@ class PrimarySchool(db.Model):
     school_id     = db.Column(db.Integer, primary_key=True)
     official_name = db.Column(db.String(255), nullable=False)
     postal_code   = db.Column(db.Integer)
-    latitude      = db.Column(db.Float, nullable=False)
-    longitude     = db.Column(db.Float, nullable=False)
+    location      = db.Column(
+        Geography(geometry_type="POINT", srid=4326), nullable=False
+    )
     vacancies     = db.Column(db.Integer, default=0)
+
+    zones = db.relationship("PriorityZone", backref="school")
+
+    # --- Convenience lat/lng access ---
+
+    @property
+    def latitude(self):
+        if self.location is not None:
+            return to_shape(self.location).y
+        return None
+
+    @property
+    def longitude(self):
+        if self.location is not None:
+            return to_shape(self.location).x
+        return None
+
+    @staticmethod
+    def make_location(lat, lng):
+        """Create a PostGIS geography value from lat/lng."""
+        return WKTElement(f"POINT({lng} {lat})", srid=4326)
+
+    # --- Domain methods ---
 
     def get_details(self):
         return f"{self.official_name} ({self.postal_code})"
