@@ -1,7 +1,22 @@
-// TODO: Root component — define React Router routes
-// TODO: Route "/" → HomePage (HomeScreen)
-// TODO: Route "/search" → SearchResultsPage (SearchResultsScreen)
-// TODO: Route "/watchlist" → WatchlistPage (UC4, requires auth gate)
-// TODO: Persistent NavBar component across all routes
-// TODO: Global error boundary for API failures
-// TODO: Demo mode banner when backend signals offline APIs (NFR3)
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import NavBar from './components/NavBar';
+import HomePage from './pages/HomePage';
+import WatchlistPage from './pages/WatchlistPage';
+
+function App() {
+  return (
+    <div className="app">
+      <NavBar />
+      <main className="app-main">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/search" element={<Navigate to="/" replace />} />
+          <Route path="/watchlist" element={<WatchlistPage />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
+
+export default App;

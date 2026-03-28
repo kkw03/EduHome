@@ -3,19 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "react": "TODO: ^18.x",
-    "react-dom": "TODO: ^18.x",
-    "react-router-dom": "TODO: ^6.x — client-side routing between pages",
-    "react-scripts": "TODO: ^5.x — Create React App toolchain",
-    "leaflet": "TODO: ^1.9.x — map rendering",
-    "react-leaflet": "TODO: ^4.x — React bindings for Leaflet",
-    "chart.js": "TODO: ^4.x — trend chart rendering (UC6)",
-    "react-chartjs-2": "TODO: ^5.x — React bindings for Chart.js",
-    "axios": "TODO: ^1.x — HTTP client for backend API calls"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0",
+    "react-scripts": "^5.0.1",
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^4.2.1",
+    "chart.js": "^4.4.1",
+    "react-chartjs-2": "^5.2.0",
+    "axios": "^1.6.2"
   },
   "scripts": {
-    "start": "TODO: react-scripts start",
-    "build": "TODO: react-scripts build",
-    "test": "TODO: react-scripts test"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test"
+  },
+  "browserslist": {
+    "production": [">0.2%", "not dead", "not op_mini all"],
+    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
   }
 }

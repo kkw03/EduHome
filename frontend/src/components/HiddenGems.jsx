@@ -1,6 +1,43 @@
-// TODO: HiddenGems — valuation gap toggle (UC3, FR2)
-// TODO: Toggle button to show/hide undervalued blocks on MapView
-// TODO: Fetch data via GET /api/search/hidden-gems
-// TODO: Pass highlighted block IDs to MapView for rendering
-// TODO: Show "no hidden gems found" when none below PSF threshold
-// TODO: Show "insufficient data" notice when not enough transactions
+import React from 'react';
+import { getHiddenGemIds } from '../data/dummyData';
+
+export default function HiddenGems({ active, onToggle, schoolId, blocks = [] }) {
+  const gemIds = getHiddenGemIds(schoolId);
+  const gems = blocks.filter(b => gemIds.includes(b.block_id));
+  const goldBlocks = blocks.filter(b => b.zone === 'GOLD_1KM');
+  const zoneAvgPSF = goldBlocks.length
+    ? Math.round(goldBlocks.reduce((s, b) => s + b.avg_psf, 0) / goldBlocks.length)
+    : 0;
+
+  return (
+    <div className="panel-card">
+      <div className="panel-header">
+        <h3 className="panel-title">Below-average PSF</h3>
+        <button className={`toggle-btn ${active ? 'active' : ''}`} onClick={onToggle}>
+          {active ? 'On' : 'Off'}
+        </button>
+      </div>
+      <p className="panel-desc">Blocks below zone average of ${zoneAvgPSF}/psf</p>
+
+      {active && (
+        <div className="gem-list">
+          {gems.length === 0 ? (
+            <p className="empty-msg">None found in this zone</p>
+          ) : (
+            gems.map(b => (
+              <div key={b.block_id} className="gem-item">
+                <div className="gem-info">
+                  <strong>Blk {b.block_num}</strong> {b.street_name}
+                </div>
+                <div className="gem-psf">
+                  <span className="gem-price">${b.avg_psf}/psf</span>
+                  <span className="gem-savings">-${zoneAvgPSF - b.avg_psf}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

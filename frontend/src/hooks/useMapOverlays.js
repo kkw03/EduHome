@@ -1,4 +1,35 @@
-// TODO: useMapOverlays — custom hook for managing map layer toggles
-// TODO: Manage: heatmapActive, hiddenGemsActive, leaseGuardActive
-// TODO: Toggle functions that fetch data and update MapView overlays
-// TODO: Clear all overlays on new search
+import { useState, useCallback } from 'react';
+
+export default function useMapOverlays() {
+  const [heatmapActive, setHeatmapActive] = useState(false);
+  const [hiddenGemsActive, setHiddenGemsActive] = useState(false);
+  const [leaseGuardActive, setLeaseGuardActive] = useState(false);
+
+  const toggleHeatmap = useCallback(() => {
+    setHeatmapActive(prev => !prev);
+  }, []);
+
+  const toggleHiddenGems = useCallback(() => {
+    setHiddenGemsActive(prev => !prev);
+  }, []);
+
+  const toggleLeaseGuard = useCallback(() => {
+    setLeaseGuardActive(prev => !prev);
+  }, []);
+
+  const clearOverlays = useCallback(() => {
+    setHeatmapActive(false);
+    setHiddenGemsActive(false);
+    setLeaseGuardActive(false);
+  }, []);
+
+  return {
+    heatmapActive,
+    hiddenGemsActive,
+    leaseGuardActive,
+    toggleHeatmap,
+    toggleHiddenGems,
+    toggleLeaseGuard,
+    clearOverlays,
+  };
+}
