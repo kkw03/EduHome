@@ -1,1 +1,7 @@
 **/.DS_Store
+.env
+node_modules/
+__pycache__/
+venv/
+build/dist/
+w
