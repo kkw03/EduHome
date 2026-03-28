@@ -16,6 +16,8 @@ Flask-SQLAlchemy
 Flask-Login
 Flask-Mail
 flask-cors
+GeoAlchemy2
+Shapely
 psycopg2-binary
 requests
 APScheduler

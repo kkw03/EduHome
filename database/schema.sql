@@ -22,17 +22,17 @@ CREATE TABLE IF NOT EXISTS priority_zones (
     zone_id      SERIAL PRIMARY KEY,
     school_id    INTEGER REFERENCES primary_schools(school_id) ON DELETE CASCADE,
     radius_tier  VARCHAR(20) CHECK (radius_tier IN ('GOLD_1KM', 'SILVER_2KM')),
-    boundary     GEOGRAPHY(Polygon, 4326) NOT NULL 
+    boundary     GEOGRAPHY(Polygon, 4326) NOT NULL
 );
 
 -- 4. HDB Blocks (Entity: HDBBlock)
 CREATE TABLE IF NOT EXISTS hdb_blocks (
     block_id         SERIAL PRIMARY KEY,
-    street_name      VARCHAR(255), 
+    street_name      VARCHAR(255),
     block_num        VARCHAR(10),
     lease_start_year INTEGER,
     total_units      INTEGER,
-    location         GEOGRAPHY(Point, 4326) NOT NULL 
+    location         GEOGRAPHY(Point, 4326) NOT NULL
 );
 
 -- 5. Transactions (Entity: Transaction)
@@ -75,11 +75,11 @@ CREATE INDEX IF NOT EXISTS idx_schools_name ON primary_schools (official_name);
 CREATE INDEX IF NOT EXISTS idx_transactions_price ON transactions (resale_price);
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions (transaction_date DESC);
 
--- ADVANCED DESIGN: ANALYTICS VIEWS 
+-- ADVANCED DESIGN: ANALYTICS VIEWS
 
 -- This automatically calculates PSF for every transaction.
 CREATE OR REPLACE VIEW v_transaction_analysis AS
-SELECT 
+SELECT
     t.*,
     (t.resale_price / NULLIF(t.floor_area_sqm, 0)) as calculated_psf
 FROM transactions t;
