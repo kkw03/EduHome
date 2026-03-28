@@ -10,3 +10,15 @@
 # TODO: Werkzeug              — password hashing utilities
 # TODO: pytest                — test runner
 # TODO: pytest-flask          — Flask test fixtures
+
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Flask-Mail
+flask-cors
+psycopg2-binary
+requests
+APScheduler
+Werkzeug
+pytest
+pytest-flask
