@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import * as authService from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -7,27 +8,60 @@ export function AuthProvider({ children }) {
     const saved = localStorage.getItem('eduhome_user');
     return saved ? JSON.parse(saved) : null;
   });
+  const [loading, setLoading] = useState(true);
 
   const isAuthenticated = !!user;
 
-  const login = useCallback((email, password) => {
-    // Dummy auth — accept any non-empty credentials
-    if (email && password) {
-      const userData = { email, name: email.split('@')[0] };
+  // Restore session on mount
+  useEffect(() => {
+    authService.getCurrentUser()
+      .then((userData) => {
+        setUser(userData);
+        localStorage.setItem('eduhome_user', JSON.stringify(userData));
+      })
+      .catch(() => {
+        setUser(null);
+        localStorage.removeItem('eduhome_user');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const login = useCallback(async (email, password) => {
+    try {
+      const userData = await authService.login(email, password);
       setUser(userData);
       localStorage.setItem('eduhome_user', JSON.stringify(userData));
       return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.error || 'Login failed';
+      return { success: false, error: message };
     }
-    return { success: false, error: 'Invalid credentials' };
   }, []);
 
-  const logout = useCallback(() => {
+  const register = useCallback(async (email, password, contactNo) => {
+    try {
+      const userData = await authService.register(email, password, contactNo);
+      setUser(userData);
+      localStorage.setItem('eduhome_user', JSON.stringify(userData));
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.error || 'Registration failed';
+      return { success: false, error: message };
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // Ignore logout errors
+    }
     setUser(null);
     localStorage.removeItem('eduhome_user');
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

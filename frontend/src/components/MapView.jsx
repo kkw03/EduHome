@@ -1,7 +1,7 @@
 import React from 'react';
 import { MapContainer, TileLayer, Circle, Marker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { SCHOOLS, getHeatmapColor, getRemainingLease, getHiddenGemIds, getLeaseFlaggedIds } from '../data/dummyData';
+import { getHeatmapColor, getRemainingLease } from '../utils/propertyUtils';
 
 function dot(color, size = 10, border = '#fff', borderWidth = 2) {
   return L.divIcon({
@@ -21,6 +21,7 @@ function ChangeView({ center, zoom }) {
 export default function MapView({
   school,
   blocks = [],
+  schools = [],
   onBlockSelect,
   onSchoolSelect,
   heatmapActive = false,
@@ -31,19 +32,28 @@ export default function MapView({
   const center = school ? [school.lat, school.lng] : [1.3521, 103.8198];
   const zoom = school ? 15 : 12;
 
-  const gemIds = school ? getHiddenGemIds(school.school_id) : [];
-  const leaseIds = school ? getLeaseFlaggedIds(school.school_id) : [];
+  // Compute hidden gem IDs from blocks: gold blocks with avg_psf < zoneAvg * 0.9
+  const goldBlocks = blocks.filter(b => b.zone === 'GOLD_1KM');
+  const zoneAvg = goldBlocks.length
+    ? goldBlocks.reduce((s, b) => s + b.avg_psf, 0) / goldBlocks.length
+    : 0;
+  const gemIds = new Set(goldBlocks.filter(b => b.avg_psf < zoneAvg * 0.9).map(b => b.block_id));
+
+  // Compute lease flagged IDs: blocks where remaining lease < 60 years
+  const leaseIds = new Set(
+    blocks.filter(b => getRemainingLease(b.lease_start_year) < 60).map(b => b.block_id)
+  );
 
   const getBlockColor = (block) => {
     if (heatmapActive) return getHeatmapColor(block.avg_psf);
-    if (hiddenGemsActive && gemIds.includes(block.block_id)) return '#3b82f6';
-    if (leaseGuardActive && leaseIds.includes(block.block_id)) return '#ef4444';
+    if (hiddenGemsActive && gemIds.has(block.block_id)) return '#3b82f6';
+    if (leaseGuardActive && leaseIds.has(block.block_id)) return '#ef4444';
     return block.zone === 'GOLD_1KM' ? '#eab308' : '#60a5fa';
   };
 
   const isSelected = (block) => selectedBlockId === block.block_id;
 
-  const otherSchools = SCHOOLS.filter(s => !school || s.school_id !== school.school_id);
+  const otherSchools = schools.filter(s => !school || s.school_id !== school.school_id);
 
   return (
     <div className="map-container">

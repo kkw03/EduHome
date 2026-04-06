@@ -12,16 +12,24 @@ import CommuteOptimizer from '../components/CommuteOptimizer';
 import useSearch from '../hooks/useSearch';
 import useMapOverlays from '../hooks/useMapOverlays';
 import { useNavigate } from 'react-router-dom';
+import { getSchools } from '../services/searchService';
 
 export default function HomePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { selectedSchool, blocks, loading, performSearch, applyFilters, clearFilters } = useSearch();
+  const { selectedSchool, blocks, loading, error, performSearch, applyFilters, clearFilters } = useSearch();
   const { heatmapActive, hiddenGemsActive, leaseGuardActive, toggleHeatmap, toggleHiddenGems, toggleLeaseGuard } = useMapOverlays();
 
   const [selectedBlockId, setSelectedBlockId] = useState(null);
   const [sidePanel, setSidePanel] = useState('filters');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [schools, setSchools] = useState([]);
+
+  useEffect(() => {
+    getSchools()
+      .then(setSchools)
+      .catch(() => setSchools([]));
+  }, []);
 
   useEffect(() => {
     if (location.state?.school) {
@@ -54,6 +62,12 @@ export default function HomePage() {
         )}
       </div>
 
+      {error && (
+        <div className="error-banner" style={{ background: '#fef2f2', color: '#dc2626', padding: '10px 16px', fontSize: '14px', borderBottom: '1px solid #fecaca' }}>
+          {error}
+        </div>
+      )}
+
       <div className="search-layout">
         <div className="search-map">
           {loading ? (
@@ -65,6 +79,7 @@ export default function HomePage() {
             <MapView
               school={selectedSchool}
               blocks={blocks}
+              schools={schools}
               onBlockSelect={setSelectedBlockId}
               onSchoolSelect={handleSearch}
               heatmapActive={heatmapActive}

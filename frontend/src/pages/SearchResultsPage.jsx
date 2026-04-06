@@ -15,7 +15,7 @@ import useMapOverlays from '../hooks/useMapOverlays';
 export default function SearchResultsPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { selectedSchool, blocks, loading, performSearch, applyFilters, clearFilters } = useSearch();
+  const { selectedSchool, blocks, loading, error, performSearch, applyFilters, clearFilters } = useSearch();
   const { heatmapActive, hiddenGemsActive, leaseGuardActive, toggleHeatmap, toggleHiddenGems, toggleLeaseGuard } = useMapOverlays();
 
   const [selectedBlockId, setSelectedBlockId] = useState(null);
@@ -51,6 +51,12 @@ export default function SearchResultsPage() {
           </div>
         )}
       </div>
+
+      {error && (
+        <div className="error-banner" style={{ background: '#fef2f2', color: '#dc2626', padding: '10px 16px', fontSize: '14px', borderBottom: '1px solid #fecaca' }}>
+          {error}
+        </div>
+      )}
 
       <div className="search-layout">
         <div className="search-map">

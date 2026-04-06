@@ -1,10 +1,9 @@
 import React from 'react';
-import { getLeaseFlaggedIds, getRemainingLease } from '../data/dummyData';
+import { getRemainingLease } from '../utils/propertyUtils';
 
 export default function LeaseGuard({ active, onToggle, schoolId, blocks = [], childStartYear }) {
-  const flaggedIds = getLeaseFlaggedIds(schoolId);
-  const flagged = blocks.filter(b => flaggedIds.includes(b.block_id));
   const requiredYears = childStartYear ? (childStartYear + 6 - new Date().getFullYear()) : 30;
+  const flagged = blocks.filter(b => getRemainingLease(b.lease_start_year) < requiredYears);
 
   return (
     <div className="panel-card">

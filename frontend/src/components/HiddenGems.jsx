@@ -1,13 +1,11 @@
 import React from 'react';
-import { getHiddenGemIds } from '../data/dummyData';
 
 export default function HiddenGems({ active, onToggle, schoolId, blocks = [] }) {
-  const gemIds = getHiddenGemIds(schoolId);
-  const gems = blocks.filter(b => gemIds.includes(b.block_id));
   const goldBlocks = blocks.filter(b => b.zone === 'GOLD_1KM');
   const zoneAvgPSF = goldBlocks.length
     ? Math.round(goldBlocks.reduce((s, b) => s + b.avg_psf, 0) / goldBlocks.length)
     : 0;
+  const gems = goldBlocks.filter(b => b.avg_psf < zoneAvgPSF * 0.9);
 
   return (
     <div className="panel-card">

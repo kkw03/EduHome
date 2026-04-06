@@ -1,5 +1,5 @@
 import React from 'react';
-import { HEATMAP_LEGEND } from '../data/dummyData';
+import { HEATMAP_LEGEND } from '../utils/propertyUtils';
 
 export default function Heatmap({ active, onToggle }) {
   return (

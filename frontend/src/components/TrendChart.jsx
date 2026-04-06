@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -11,14 +11,68 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
-import { getTrendForBlock } from '../data/dummyData';
+import { getMarketTrend } from '../services/trendService';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 export default function TrendChart({ blockId, blockInfo, onClose }) {
+  const [trend, setTrend] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!blockId) return;
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    getMarketTrend(blockId)
+      .then((data) => {
+        if (!cancelled) setTrend(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.response?.data?.error || 'Failed to load trend data');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [blockId]);
+
   if (!blockId) return null;
 
-  const trend = getTrendForBlock(blockId);
+  if (loading) {
+    return (
+      <div className="panel-card trend-panel" style={{ margin: '0 12px 12px' }}>
+        <div className="panel-header">
+          <h3 className="panel-title">Price trend</h3>
+          <button className="panel-close" onClick={onClose}>&times;</button>
+        </div>
+        <div style={{ padding: '24px', textAlign: 'center' }}>
+          <div className="spinner" />
+          <p>Loading trend data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="panel-card trend-panel" style={{ margin: '0 12px 12px' }}>
+        <div className="panel-header">
+          <h3 className="panel-title">Price trend</h3>
+          <button className="panel-close" onClick={onClose}>&times;</button>
+        </div>
+        <div style={{ padding: '24px', textAlign: 'center', color: '#dc2626' }}>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!trend) return null;
 
   const data = {
     labels: trend.labels,

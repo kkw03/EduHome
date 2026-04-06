@@ -1,12 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { getSchoolSuggestions } from '../data/dummyData';
+import { getSchools } from '../services/searchService';
 
 export default function SearchBar({ onSearch, size = 'large' }) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState('');
+  const [allSchools, setAllSchools] = useState([]);
   const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    getSchools()
+      .then(setAllSchools)
+      .catch(() => setAllSchools([]));
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -18,12 +25,18 @@ export default function SearchBar({ onSearch, size = 'large' }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const filterSchools = (q) => {
+    if (!q) return [];
+    const lower = q.toLowerCase();
+    return allSchools.filter(s => s.official_name.toLowerCase().includes(lower));
+  };
+
   const handleChange = (e) => {
     const val = e.target.value;
     setQuery(val);
     setError('');
     if (val.length >= 2) {
-      const matches = getSchoolSuggestions(val);
+      const matches = filterSchools(val);
       setSuggestions(matches);
       setShowDropdown(matches.length > 0);
     } else {
@@ -44,7 +57,7 @@ export default function SearchBar({ onSearch, size = 'large' }) {
       setError('Please enter a school name');
       return;
     }
-    const matches = getSchoolSuggestions(query);
+    const matches = filterSchools(query);
     if (matches.length === 0) {
       setError('School not found. Please check the name and try again.');
       return;

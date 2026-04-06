@@ -2,15 +2,25 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginModal({ onClose }) {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
+  const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [contactNo, setContactNo] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const result = login(email, password);
+    setLoading(true);
+
+    const result = isRegister
+      ? await register(email, password, contactNo)
+      : await login(email, password);
+
+    setLoading(false);
+
     if (result.success) {
       onClose();
     } else {
@@ -22,7 +32,7 @@ export default function LoginModal({ onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Log in</h2>
+          <h2>{isRegister ? 'Create account' : 'Log in'}</h2>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-body">
@@ -46,9 +56,27 @@ export default function LoginModal({ onClose }) {
               required
             />
           </div>
+          {isRegister && (
+            <div className="form-group">
+              <label>Contact number (optional)</label>
+              <input
+                type="tel"
+                value={contactNo}
+                onChange={e => setContactNo(e.target.value)}
+                placeholder="91234567"
+              />
+            </div>
+          )}
           {error && <p className="form-error">{error}</p>}
-          <button type="submit" className="btn btn-primary btn-full">Log in</button>
-          <p className="form-hint">Demo mode: any credentials accepted</p>
+          <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
+            {loading ? 'Please wait...' : (isRegister ? 'Create account' : 'Log in')}
+          </button>
+          <p className="form-hint">
+            {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button type="button" className="link-btn" onClick={() => { setIsRegister(!isRegister); setError(''); }}>
+              {isRegister ? 'Log in' : 'Register'}
+            </button>
+          </p>
         </form>
       </div>
     </div>

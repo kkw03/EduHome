@@ -1,21 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LoginModal from '../components/LoginModal';
-import { WATCHLIST_ITEMS, SCHOOLS } from '../data/dummyData';
+import { getWatchlist, addWatchlistItem, removeWatchlistItem } from '../services/watchlistService';
+import { getSchools } from '../services/searchService';
 
 export default function WatchlistPage() {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
   const [showLogin, setShowLogin] = useState(false);
-  const [items, setItems] = useState(WATCHLIST_ITEMS);
+  const [items, setItems] = useState([]);
+  const [schools, setSchools] = useState([]);
   const [showForm, setShowForm] = useState(!!location.state?.school);
   const [confirmation, setConfirmation] = useState('');
+  const [loadingItems, setLoadingItems] = useState(false);
 
   const [formSchool, setFormSchool] = useState(location.state?.school?.school_id || '');
   const [minBudget, setMinBudget] = useState('');
   const [maxBudget, setMaxBudget] = useState('');
   const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLoadingItems(true);
+      getWatchlist()
+        .then(setItems)
+        .catch(() => setItems([]))
+        .finally(() => setLoadingItems(false));
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    getSchools()
+      .then(setSchools)
+      .catch(() => setSchools([]));
+  }, []);
 
   if (!isAuthenticated) {
     return (
@@ -30,7 +49,7 @@ export default function WatchlistPage() {
     );
   }
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     setFormError('');
 
@@ -38,29 +57,32 @@ export default function WatchlistPage() {
     if (!minBudget || !maxBudget) { setFormError('Enter budget range'); return; }
     if (Number(minBudget) >= Number(maxBudget)) { setFormError('Max must exceed min budget'); return; }
 
-    const school = SCHOOLS.find(s => s.school_id === Number(formSchool));
-    const newItem = {
-      watch_id: Date.now(),
-      school,
-      min_budget: Number(minBudget),
-      max_budget: Number(maxBudget),
-      is_active: true,
-      created: new Date().toISOString().split('T')[0],
-    };
-
-    setItems([newItem, ...items]);
-    setShowForm(false);
-    setFormSchool('');
-    setMinBudget('');
-    setMaxBudget('');
-    setConfirmation('Item added to watchlist');
-    setTimeout(() => setConfirmation(''), 3000);
+    try {
+      const newItem = await addWatchlistItem(Number(formSchool), Number(minBudget), Number(maxBudget));
+      // Refresh the list to get full data including school_name
+      const refreshed = await getWatchlist();
+      setItems(refreshed);
+      setShowForm(false);
+      setFormSchool('');
+      setMinBudget('');
+      setMaxBudget('');
+      setConfirmation('Item added to watchlist');
+      setTimeout(() => setConfirmation(''), 3000);
+    } catch (err) {
+      setFormError(err.response?.data?.error || 'Failed to add item');
+    }
   };
 
-  const handleDelete = (watchId) => {
-    setItems(items.filter(i => i.watch_id !== watchId));
-    setConfirmation('Item removed');
-    setTimeout(() => setConfirmation(''), 3000);
+  const handleDelete = async (watchId) => {
+    try {
+      await removeWatchlistItem(watchId);
+      setItems(items.filter(i => i.watch_id !== watchId));
+      setConfirmation('Item removed');
+      setTimeout(() => setConfirmation(''), 3000);
+    } catch (err) {
+      setConfirmation('Failed to remove item');
+      setTimeout(() => setConfirmation(''), 3000);
+    }
   };
 
   const toggleActive = (watchId) => {
@@ -88,7 +110,7 @@ export default function WatchlistPage() {
               <label>School</label>
               <select value={formSchool} onChange={e => setFormSchool(e.target.value)}>
                 <option value="">Select a school</option>
-                {SCHOOLS.map(s => (
+                {schools.map(s => (
                   <option key={s.school_id} value={s.school_id}>{s.official_name}</option>
                 ))}
               </select>
@@ -110,7 +132,9 @@ export default function WatchlistPage() {
       )}
 
       <div className="watchlist-list">
-        {items.length === 0 ? (
+        {loadingItems ? (
+          <div className="empty-state"><p>Loading...</p></div>
+        ) : items.length === 0 ? (
           <div className="empty-state">
             <p>No watchlist items yet.</p>
             <p>Search for a school and add it to get started.</p>
@@ -120,11 +144,10 @@ export default function WatchlistPage() {
             <div key={item.watch_id} className={`watchlist-item ${!item.is_active ? 'inactive' : ''}`}>
               <div className="watchlist-item-main">
                 <div className="watchlist-item-info">
-                  <h3>{item.school.official_name}</h3>
+                  <h3>{item.school_name}</h3>
                   <p className="watchlist-budget">
-                    ${item.min_budget.toLocaleString()} &ndash; ${item.max_budget.toLocaleString()}
+                    ${Number(item.min_budget).toLocaleString()} &ndash; ${Number(item.max_budget).toLocaleString()}
                   </p>
-                  <p className="watchlist-date">Added {item.created}</p>
                 </div>
                 <div className="watchlist-item-status">
                   <span className={`status-badge ${item.is_active ? 'active' : 'paused'}`}>

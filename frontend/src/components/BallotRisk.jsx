@@ -1,12 +1,63 @@
-import React, { useState } from 'react';
-import { BALLOT_RISK } from '../data/dummyData';
+import React, { useState, useEffect } from 'react';
+import { getBallotRisk } from '../services/ballotRiskService';
 
 export default function BallotRisk({ schoolId, schoolName }) {
   const [showDetail, setShowDetail] = useState(false);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!schoolId) return;
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    getBallotRisk(schoolId)
+      .then((result) => {
+        if (!cancelled) setData(result);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.response?.data?.error || 'Failed to load ballot data');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [schoolId]);
 
   if (!schoolId) return null;
 
-  const data = BALLOT_RISK[schoolId] || BALLOT_RISK[1];
+  if (loading) {
+    return (
+      <div className="panel-card">
+        <div className="panel-header">
+          <h3 className="panel-title">Ballot risk assessment</h3>
+        </div>
+        <div style={{ padding: '24px', textAlign: 'center' }}>
+          <div className="spinner" />
+          <p>Loading ballot data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="panel-card">
+        <div className="panel-header">
+          <h3 className="panel-title">Ballot risk assessment</h3>
+        </div>
+        <div style={{ padding: '24px', textAlign: 'center', color: '#dc2626' }}>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
 
   const riskColor = {
     Low: '#16a34a',

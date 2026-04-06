@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getCommuteResults } from '../data/dummyData';
+import { getCommuteRoute } from '../services/commuteService';
 
 export default function CommuteOptimizer({ schoolId, schoolName }) {
   const [origin, setOrigin] = useState('');
@@ -7,7 +7,7 @@ export default function CommuteOptimizer({ schoolId, schoolName }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -17,10 +17,14 @@ export default function CommuteOptimizer({ schoolId, schoolName }) {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      setResults(getCommuteResults(schoolId));
+    try {
+      const data = await getCommuteRoute(schoolId);
+      setResults(data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to find routes');
+    } finally {
       setLoading(false);
-    }, 400);
+    }
   };
 
   const handleReset = () => {
@@ -35,7 +39,7 @@ export default function CommuteOptimizer({ schoolId, schoolName }) {
         <h3 className="panel-title">Commute optimizer</h3>
       </div>
       <p className="panel-desc">
-        Best Silver zone blocks by bus travel time to {schoolName || 'school'}
+        Best Silver zone blocks by travel time to {schoolName || 'school'}
       </p>
 
       <form onSubmit={handleSearch} className="commute-form">
@@ -69,7 +73,7 @@ export default function CommuteOptimizer({ schoolId, schoolName }) {
               <div className="commute-details">
                 <span className="commute-time">{r.travel_time_min} min</span>
                 <span className="commute-dist">{r.distance_km} km</span>
-                <span className="commute-route">{r.route}</span>
+                {r.route && <span className="commute-route">{r.route}</span>}
               </div>
             </div>
           ))}
